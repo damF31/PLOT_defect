@@ -59,6 +59,33 @@ def get_colnames(filepath):
     n = get_n_species(filepath)
     return [f"at{i+1}" for i in range(n)]
 
+def get_colnames_full(filepath):
+    """
+    Retourne la liste complète des noms de colonnes dans l'ordre du fichier :
+    mu1, mu2, ..., x_at1, x_at2, ..., x_DP, Hf_DP
+    Si l'entête n'est pas lisible, construit par défaut.
+    """
+    # Essaie de lire l'entête
+    try:
+        with open(filepath, encoding='latin1') as f:
+            for line in f:
+                if line.strip().startswith("mu"):
+                    # Utilise la ligne d'entête pour détecter les noms, découpe sur les espaces
+                    return line.strip().split()
+    except Exception:
+        pass
+    # Sinon, construit à partir du nombre de colonnes
+    n = get_n_species(filepath)
+    colnames = []
+    for i in range(n):
+        colnames.append(f"mu{i+1}")
+    for i in range(n):
+        colnames.append(f"x_at{i+1}")
+    colnames.append("x_DP")
+    colnames.append("Hf_DP")
+    return colnames
+
+
 def read_data(filepath, x_col=None, y_col=None, n_species=None):
     """
     Ouvre et lit les colonnes utiles d'un fichier de données.

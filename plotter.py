@@ -42,31 +42,45 @@ class Plotter:
 
     def get_xcol_ycol(self, fname):
         """
-        Calcule les bons index de colonnes pour l'abscisse et l'ordonnée selon le choix utilisateur.
+        Retourne les indices des colonnes sélectionnées via l'UI, dans l'ordre réel du fichier.
         """
-        n = get_n_species(fname)
-        # Liste des noms d'espèces dans l'ordre fichier
-        all_names = get_colnames(fname)
-        # Nom de l'abscisse choisi
-        xaxis_name = self.app.xaxis_choice.get()  # ex: "x_H", "mu_Ti"
-        # Par défaut (sécurité)
-        x_col = n + n - 1  # dernière x_at
-        xaxis_type = 'x'
-        if xaxis_name and '_' in xaxis_name:
-            kind, label = xaxis_name.split("_", 1)
-            if label in all_names:
-                idx = all_names.index(label)
-            else:
-                idx = 0
-            if kind == "x":
-                x_col = n + idx
-                xaxis_type = 'x'
-            elif kind == "mu":
-                x_col = idx
-                xaxis_type = 'mu'
-        # y_col = concentration de config (x_DP), c'est toujours colonne 2n
-        y_col = 2 * n
-        return x_col, y_col, xaxis_type, all_names
+        # Récupère tous les noms de colonnes dans l'ordre réel
+        colnames = get_colnames_full(fname)
+        # Récupère le choix utilisateur dans l'interface (menu déroulant ou champ texte)
+        absc_label = self.app.xaxis_choice.get()  # ex: "mu2" ou "x_at1" ou "x_DP"
+        y_label = self.app.yaxis_choice.get()     # ex: "x_DP" ou "Hf_DP"
+        # Trouve l'indice correspondant dans colnames
+        x_col = colnames.index(absc_label)
+        y_col = colnames.index(y_label)
+        return x_col, y_col, 'x', colnames
+
+#    def get_xcol_ycol(self, fname):
+#        """
+#        Calcule les bons index de colonnes pour l'abscisse et l'ordonnée selon le choix utilisateur.
+#        """
+#        n = get_n_species(fname)
+#        # Liste des noms d'espèces dans l'ordre fichier
+#        all_names = get_colnames(fname)
+#        # Nom de l'abscisse choisi
+#        xaxis_name = self.app.xaxis_choice.get()  # ex: "x_H", "mu_Ti"
+#        # Par défaut (sécurité)
+#        x_col = n + n - 1  # dernière x_at
+#        xaxis_type = 'x'
+#        if xaxis_name and '_' in xaxis_name:
+#            kind, label = xaxis_name.split("_", 1)
+#            if label in all_names:
+#                idx = all_names.index(label)
+#            else:
+#                idx = 0
+#            if kind == "x":
+#                x_col = n + idx
+#                xaxis_type = 'x'
+#            elif kind == "mu":
+#                x_col = idx
+#                xaxis_type = 'mu'
+#        # y_col = concentration de config (x_DP), c'est toujours colonne 2n
+#        y_col = 2 * n
+#        return x_col, y_col, xaxis_type, all_names
 
     def generate_plot(self):
         logic = self.app.logic
@@ -80,7 +94,7 @@ class Plotter:
         # On détermine la nature de l'abscisse pour le scaling
         # Prend le premier fichier comme référence
         ref_fname = file_labels[0][0] if file_labels else None
-        x_col, y_col, xaxis_type, all_names = self.get_xcol_ycol(ref_fname) if ref_fname else (0, 0, 'x', [])
+        x_col, y_col, xaxis_type, all_names = self.get_xcol_ycol(ref_fname) #if ref_fname else (0, 0, 'x', [])
 
         xmin, xmax, ymin, ymax, xscale, yscale = self.get_plot_limits_and_scales(xaxis_type)
         plt.xscale(xscale)

@@ -60,7 +60,10 @@ class DefectPlotterApp:
         self.selected_sites = []
 
         # Choix de l'abscisse pour le tracé
-        self.xaxis_choice = tk.StringVar()      # ex: "x_Ti", "mu_H"
+        self.xaxis_choice = ttk.Combobox(parent, state='readonly')
+        self.yaxis_choice = ttk.Combobox(parent, state='readonly')
+
+#        self.xaxis_choice = tk.StringVar()      # ex: "x_Ti", "mu_H"
         self.xaxis_menu = None                  # widget OptionMenu dynamiquement créé
         self.xaxis_label = None                 # label pour l'abscisse
 
@@ -76,6 +79,19 @@ class DefectPlotterApp:
         """Méthode de traduction"""
         return translations[self.language].get(key, key)
 
+    def update_axis_choices(self, filepath):
+        from data_loader import get_colnames_full
+        colnames = get_colnames_full(filepath)
+        self.xaxis_choice['values'] = colnames
+        self.yaxis_choice['values'] = colnames
+        if colnames:
+            self.xaxis_choice.set(colnames[0])
+            for default_y in ('x_DP', 'Hf_DP'):
+                if default_y in colnames:
+                    self.yaxis_choice.set(default_y)
+                    break
+            else:
+                self.yaxis_choice.set(colnames[-1])
     def create_widgets(self):
         # Menu pour changer de langue
         lang_var = tk.StringVar(value=self.language)
