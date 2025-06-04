@@ -1,0 +1,16 @@
+les données dans les fichiers sont de la forme (par exemple pour 1_r_2): 
+mu_at1, mu_at2, mu_at3, x_at1,   x_at2,  x_at3,  x_DP=1_2 , H_f(eV)_DP=1_2
+où at1 sera le premier atome de la liste "atome réseau", 
+at2 "deuxième de la liste atome réseau", etc. 
+Si il n'y a pas assez d'atomes réseau, se seront ensuite les atomes interstitiels. On a donc autant de colunne "mu_at" puis de "x_at" que de type d'atome (atomes réseau+atomesinterstitiels).
+mu_at correspond alors au potentiel chimique de l'atome, et x_at aux fracions de ces atomes dans le système (on doit avoir la somme des ces fraction =1), 
+ensuite on a une colonne avec la concentration de la configuration qui correspond au fichier (par ex ici x_DP=1_2, la concentration de 1 sur atome 2, car c'est le fichier 1_r_2)
+enfin on trouve l'énergie de formation (en eV) du défaut (H_f(eV)_DP=1_2). 
+Les colonnes mu_at et x_at sont toujours identifiques pour tous les fichiers. Dans l'exemple actuel j'ai 3 atomes: Ti N et H avec 2 sites réseau et 1 site intertitiel, 
+je ne trace que les colonnes 7, c'est à dire les concentrations des configurations x_DP, en fonction de la colonne 6 qui est x_at3, qui correspond à la fraction de H dans le système. 
+
+Il faudrait que la lecture soit donc modifiée: ainsi si j'ai "n" espèces (il y aura ainsi "n" colonnes de mu_at, et "n" colonnes de x_at). 
+Ensuite il faudrait que je puisse choisir si je trace les concentrations de configurations (colonne 7) en fonction de quel x_at (ce qui me donnera un type de courbe) ou en fonction d'un mu_at à définir. 
+attention, si je choisi tracé en fonction d'une concentration l'éechelle sera logarithmique et entre 2 valeurs à définir (ce qui est déjà fait)
+si je choisi en fonction du potentiel chimique, il faudra une échelle linéaire et des bornes à définir (on commencera par [-11; 0]
+Peux tu faire tous ces changements?

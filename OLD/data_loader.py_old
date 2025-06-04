@@ -1,0 +1,53 @@
+"""
+Chargement et parsing des fichiers de données.
+- read_data(path): Ouvre et lit les colonnes utiles d'un fichier, détecte le header, gère les erreurs.
+- check_files_exist(file_list): Retourne la liste des fichiers absents.
+"""
+
+import numpy as np
+import os
+from io import StringIO
+
+def read_data(filepath):
+    """
+    Ouvre et lit les colonnes utiles d'un fichier de données.
+    Le chemin fourni doit être absolu (c'est plotter.py qui construit le chemin).
+    Retourne (x, y) ou (None, None) si le fichier est absent ou invalide.
+    """
+    if not os.path.isfile(filepath):
+        return None, None
+    try:
+        with open(filepath, encoding='latin1') as f:
+            lines = f.readlines()
+        start_index = None
+        for i, line in enumerate(lines):
+            tokens = line.strip().split()
+            if len(tokens) >= 8:
+                try:
+                    _ = [float(tok) for tok in tokens[:8]]
+                    start_index = i
+                    break
+                except ValueError:
+                    continue
+        if start_index is None:
+            return None, None
+        data_str = "".join(lines[start_index:])
+        data = np.loadtxt(StringIO(data_str))
+        if data.ndim == 1:
+            data = np.expand_dims(data, axis=0)
+        if data.shape[1] < 7:
+            return None, None
+        return data[:, 5], data[:, 6]
+    except Exception:
+        return None, None
+
+def check_files_exist(file_list):
+    """
+    Retourne la liste des fichiers absents, chemins à fournir absolus si besoin.
+    file_list : liste de tuples (nom_fichier, label)
+    """
+    missing = []
+    for fname, _ in file_list:
+        if not os.path.isfile(fname):
+            missing.append(fname)
+    return missing

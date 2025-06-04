@@ -1,0 +1,159 @@
+"""
+Affichage et sauvegarde du graphique matplotlib.
+- Récupère la liste des fichiers, labels et données depuis defect_logic et data_loader.
+- Affiche la figure, la met en forme, affiche la légende et gère la sauvegarde.
+- Gère la traduction dynamique pour les messages d'erreur/infos.
+- Prend en compte les bornes et échelles des axes configurées par l'utilisateur.
+- Trace uniquement les atomes/sites sélectionnés (via defect_logic).
+"""
+
+import matplotlib.pyplot as plt
+from data_loader import read_data, check_files_exist
+import config
+
+class Plotter:
+    def __init__(self, app):
+        self.app = app
+
+    def get_plot_limits_and_scales(self):
+        # Récupère et vérifie les bornes/échelles depuis l'UI
+        def safe_float(val, default):
+            try:
+                return float(val)
+            except Exception:
+                return default
+        # X/Y min/max
+        xmin = safe_float(self.app.xmin.get(), 0)
+        xmax = safe_float(self.app.xmax.get(), 0.05)
+        ymin = safe_float(self.app.ymin.get(), 1e-12)
+        ymax = safe_float(self.app.ymax.get(), 1)
+        # Echelles log/linear
+        xscale = self.app.xscale.get() if self.app.xscale.get() in ("linear", "log") else "linear"
+        yscale = self.app.yscale.get() if self.app.yscale.get() in ("linear", "log") else "log"
+        return xmin, xmax, ymin, ymax, xscale, yscale
+
+    def generate_plot(self):
+        logic = self.app.logic
+        file_labels = logic.generate_file_list_and_labels()
+        colors = iter(config.COLORS * 20)
+        styles = iter(config.STYLES * 50)
+
+        plt.figure(figsize=(13, 8))
+        plt.grid(color="#C0C0C0")
+
+        # --- Utilise les bornes et échelles configurées ---
+        xmin, xmax, ymin, ymax, xscale, yscale = self.get_plot_limits_and_scales()
+        plt.xscale(xscale)
+        plt.yscale(yscale)
+        plt.xlim(xmin, xmax)
+        plt.ylim(ymin, ymax)
+
+        plt.xlabel("C[H]", fontsize=15, fontweight='bold')
+        plt.ylabel(self.app.tr('ylabel_defects'), fontsize=15, fontweight='bold')  # via translations
+        plt.tick_params(axis='both', which='both', direction='in', top=True, right=True)
+
+        # Titre auto
+        base_title = self.app.title_text.get().strip() or config.DEFAULT_TITLE
+        temperature = self.app.temperature.get().strip()
+        added_atoms = [e.get().strip() for e in self.app.added_atom_entries if e.get().strip()]
+        added_atoms_str = ""
+        if self.app.show_added_atoms.get() and added_atoms:
+            added_atoms_str = " + " + " + ".join(added_atoms)
+        full_title = f"{base_title}{added_atoms_str} à {temperature}K" if self.app.language == "fr" else f"{base_title}{added_atoms_str} at {temperature}K"
+        plt.text(0.03, 0.2, full_title, fontsize=14, fontweight='bold', ha='center')
+
+        self.app.preview_text.config(state='normal')
+        self.app.preview_text.delete(1.0, 'end')
+        found_data = False
+        missing_files = []
+
+        for fname, label in file_labels:
+            abs_fname = fname  # Les fichiers sont dans le dossier courant d'exécution
+            self.app.preview_text.insert('end', f"{fname}\n")
+            x, y = read_data(abs_fname)
+            color = next(colors)
+            style = next(styles)
+            if x is not None and y is not None:
+                found_data = True
+                plt.plot(x, y, label=label, color=color, linestyle=style, linewidth=2)
+            else:
+                missing_files.append(abs_fname)
+
+        self.app.preview_text.config(state='disabled')
+
+        if missing_files:
+            import tkinter.messagebox as mb
+            msg = self.app.tr('missing_files') + "\n" + "\n".join(missing_files)
+            mb.showerror(self.app.tr('missing_files_title'), msg)
+            plt.close()
+            return
+
+        if not found_data:
+            import tkinter.messagebox as mb
+            mb.showwarning(self.app.tr('no_file_title'), self.app.tr('no_file'))
+            plt.close()
+            return
+
+        plt.legend(loc='center left', bbox_to_anchor=(1.02, 0.5), fontsize=12, frameon=True)
+        plt.tight_layout()
+        plt.show()
+
+    def save_plot_dialog(self):
+        from tkinter import filedialog, messagebox
+        fmt = filedialog.asksaveasfilename(defaultextension=".png",
+                                           filetypes=[("PNG", "*.png"), ("JPG", "*.jpg"), ("PDF", "*.pdf")],
+                                           title=self.app.tr('save_dialog_title'),
+                                           initialfile=self.app.output_basename.get())
+        if fmt:
+            ext = fmt.split('.')[-1]
+            if ext in ["png", "jpg", "pdf"]:
+                self._save_plot(fmt)
+                messagebox.showinfo(self.app.tr('save_success_title'), f"{self.app.tr('save_success_msg')} {fmt}")
+            else:
+                messagebox.showerror(self.app.tr('error_title'), self.app.tr('unsupported_format'))
+
+    def _save_plot(self, savepath):
+        logic = self.app.logic
+        file_labels = logic.generate_file_list_and_labels()
+        colors = iter(config.COLORS * 20)
+        styles = iter(config.STYLES * 50)
+
+        plt.figure(figsize=(13, 8))
+        plt.grid(color="#C0C0C0")
+
+        # --- Utilise les bornes et échelles configurées ---
+        xmin, xmax, ymin, ymax, xscale, yscale = self.get_plot_limits_and_scales()
+        plt.xscale(xscale)
+        plt.yscale(yscale)
+        plt.xlim(xmin, xmax)
+        plt.ylim(ymin, ymax)
+
+        plt.xlabel("C[H]", fontsize=15, fontweight='bold')
+        plt.ylabel(self.app.tr('ylabel_defects'), fontsize=15, fontweight='bold')
+        plt.tick_params(axis='both', which='both', direction='in', top=True, right=True)
+
+        base_title = self.app.title_text.get().strip() or config.DEFAULT_TITLE
+        temperature = self.app.temperature.get().strip()
+        added_atoms = [e.get().strip() for e in self.app.added_atom_entries if e.get().strip()]
+        added_atoms_str = ""
+        if self.app.show_added_atoms.get() and added_atoms:
+            added_atoms_str = " + " + " + ".join(added_atoms)
+        full_title = f"{base_title}{added_atoms_str} à {temperature}K" if self.app.language == "fr" else f"{base_title}{added_atoms_str} at {temperature}K"
+        plt.text(0.03, 0.2, full_title, fontsize=14, fontweight='bold', ha='center')
+
+        found_data = False
+        for fname, label in file_labels:
+            abs_fname = fname
+            x, y = read_data(abs_fname)
+            color = next(colors)
+            style = next(styles)
+            if x is not None and y is not None:
+                found_data = True
+                plt.plot(x, y, label=label, color=color, linestyle=style, linewidth=2)
+        if not found_data:
+            plt.close()
+            return
+        plt.legend(loc='center left', bbox_to_anchor=(1.02, 0.5), fontsize=12, frameon=True)
+        plt.tight_layout()
+        plt.savefig(savepath, dpi=300)
+        plt.close()
