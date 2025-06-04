@@ -35,12 +35,15 @@ translations = {
         'unsupported_format': "Format non supporté",
 
         # AJOUTS pour configuration du tracé et sélection atomes/sites
+        'print_options': "Options des tracés", 
         'xmin': "X min",
         'xmax': "X max",
         'ymin': "Y min",
         'ymax': "Y max",
         'xscale': "Échelle X",
         'yscale': "Échelle Y",
+        'xscale_label': "Abcisse",
+        'yscale_label': "Ordonnée",
         'scale_linear': "Linéaire",
         'scale_log': "Logarithmique",
         'select_atoms': "Sélectionner les atomes à tracer",
@@ -83,12 +86,15 @@ translations = {
         'unsupported_format': "Unsupported format",
 
         # ADDED for plot config and atom/site selection
+        'print_options': "Plot options", 
         'xmin': "X min",
         'xmax': "X max",
         'ymin': "Y min",
         'ymax': "Y max",
         'xscale': "X scale",
         'yscale': "Y scale",
+        'xscale_label': "x-axis",
+        'yscale_label': "y-axis",
         'scale_linear': "Linear",
         'scale_log': "Logarithmic",
         'select_atoms': "Select atoms to plot",

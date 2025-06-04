@@ -85,6 +85,10 @@ class Plotter:
     def generate_plot(self):
         logic = self.app.logic
         file_labels = logic.generate_file_list_and_labels()
+        premier_fichier = file_labels[0][0] if file_labels else None
+        if premier_fichier:
+            self.app.update_axis_choices(premier_fichier)
+
         colors = iter(config.COLORS * 20)
         styles = iter(config.STYLES * 50)
 

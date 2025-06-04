@@ -4,7 +4,7 @@ Interface graphique principale multilingue (français/anglais).
 - Gère les interactions utilisateur (saisie, boutons, options d'affichage, menu de langue).
 - Délègue la logique métier à defect_logic, l'affichage à plotter.
 - Préserve les paramètres lors du changement de langue.
-- Permet de choisir dynamiquement l'abscisse de tracé (mu_atX ou x_atX d'après la liste d'atomes fournie).
+- Permet de choisir dynamiquement l'abscisse et l'ordonnée de tracé (mu_atX ou x_atX d'après la liste d'atomes fournie ou du fichier de données).
 """
 
 import tkinter as tk
@@ -13,7 +13,7 @@ from defect_logic import DefectLogic
 from plotter import Plotter
 import config
 import data_loader  # <-- Ajouté pour get_colnames
-import tkinter.ttk as ttk
+from tkinter import ttk
 
 class DefectPlotterApp:
     def __init__(self, root):
@@ -60,15 +60,9 @@ class DefectPlotterApp:
         self.selected_atoms = []
         self.selected_sites = []
 
-        # Choix de l'abscisse pour le tracé
-        self.xaxis_choice = tk.StringVar()      # ex: "x_Ti", "mu_H"
-        self.xaxis_menu = None                  # widget OptionMenu dynamiquement créé
-        self.xaxis_label = None                 # label pour l'abscisse
-
-        # Choix de l'abscisse pour le tracé
-        self.yaxis_choice = tk.StringVar()      # ex: "x_DP" ou Hf_DP"
-        self.yaxis_menu = None                  # widget OptionMenu dynamiquement créé
-        self.yaxis_label = None                 # label pour l'abscisse
+        # Choix de l'abscisse et de l'ordonnée pour le tracé (menus déroulants dynamiques)
+        self.xaxis_choice = ttk.Combobox(self.root, state='readonly', width=14)
+        self.yaxis_choice = ttk.Combobox(self.root, state='readonly', width=14)
 
         self.logic = DefectLogic(self)
         self.plotter = Plotter(self)
@@ -104,7 +98,6 @@ class DefectPlotterApp:
         self.widgets_to_translate['lang_menu'] = lang_menu
         self.lang_var = lang_var
 
-        #=================================================================
         # Cadre des paramètres système
         self.param_frame = tk.LabelFrame(self.root, text=self.tr('system_params'), padx=8, pady=4)
         self.param_frame.grid(row=0, column=0, sticky='nsew', padx=8, pady=5, columnspan=14)
@@ -116,7 +109,7 @@ class DefectPlotterApp:
         self.widgets_to_translate['system_name_label'] = self.system_name_label
         tk.Entry(self.param_frame, textvariable=self.system_name).grid(row=0, column=1, sticky='ew', columnspan=2)
 
-        # SITES ET ATOMES DU RÉSEAU
+        # SITES ET ATOMES DU RÉSEAU (inchangé)
         self.network_sites_label = tk.Label(self.param_frame, text=self.tr('network_sites'))
         self.network_sites_label.grid(row=1, column=0, sticky='e')
         self.widgets_to_translate['network_sites_label'] = self.network_sites_label
@@ -137,100 +130,89 @@ class DefectPlotterApp:
         self.network_atoms_frame = tk.Frame(self.param_frame)
         self.network_atoms_frame.grid(row=2, column=3, columnspan=3, sticky='ew')
 
-        # interstitial atoms
         self.inter_sites_label = tk.Label(self.param_frame, text=self.tr('inter_sites'))
-        self.inter_sites_label.grid(row=3, column=0, sticky='e')
+        self.inter_sites_label.grid(row=1, column=6, sticky='e')
         self.widgets_to_translate['inter_sites_label'] = self.inter_sites_label
-        tk.Entry(self.param_frame, textvariable=self.num_inter_sites, width=5).grid(row=3, column=1, sticky='w')
+        tk.Entry(self.param_frame, textvariable=self.num_inter_sites, width=5).grid(row=1, column=7, sticky='w')
         self.inter_sites_update_btn = tk.Button(self.param_frame, text=self.tr('update'), command=self.update_site_atom_inputs)
-        self.inter_sites_update_btn.grid(row=3, column=2, sticky='w')
+        self.inter_sites_update_btn.grid(row=1, column=8, sticky='w')
         self.widgets_to_translate['inter_sites_update_btn'] = self.inter_sites_update_btn
         self.inter_sites_frame = tk.Frame(self.param_frame)
-        self.inter_sites_frame.grid(row=4, column=0, columnspan=3, sticky='ew')
+        self.inter_sites_frame.grid(row=2, column=6, columnspan=3, sticky='ew')
 
         self.added_atoms_label = tk.Label(self.param_frame, text=self.tr('added_atoms'))
-        self.added_atoms_label.grid(row=3, column=3, sticky='e')
+        self.added_atoms_label.grid(row=1, column=9, sticky='e')
         self.widgets_to_translate['added_atoms_label'] = self.added_atoms_label
-        tk.Entry(self.param_frame, textvariable=self.num_added_atoms, width=5).grid(row=3, column=4, sticky='w')
+        tk.Entry(self.param_frame, textvariable=self.num_added_atoms, width=5).grid(row=1, column=10, sticky='w')
         self.added_atoms_update_btn = tk.Button(self.param_frame, text=self.tr('update'), command=self.update_site_atom_inputs)
-        self.added_atoms_update_btn.grid(row=3, column=5, sticky='w')
+        self.added_atoms_update_btn.grid(row=1, column=11, sticky='w')
         self.widgets_to_translate['added_atoms_update_btn'] = self.added_atoms_update_btn
         self.added_atoms_frame = tk.Frame(self.param_frame)
-        self.added_atoms_frame.grid(row=4, column=3, columnspan=3, sticky='ew')
+        self.added_atoms_frame.grid(row=2, column=9, columnspan=3, sticky='ew')
 
         # Après la création des frames ci-dessus (pour que les entries existent)
         self.system_title_label = tk.Label(self.param_frame, text=self.tr('system_title'))
-        self.system_title_label.grid(row=5, column=0, sticky='e')
+        self.system_title_label.grid(row=3, column=0, sticky='e')
         self.widgets_to_translate['system_title_label'] = self.system_title_label
-        tk.Entry(self.param_frame, textvariable=self.title_text).grid(row=5, column=1, sticky='ew', columnspan=3)
+        tk.Entry(self.param_frame, textvariable=self.title_text).grid(row=3, column=1, sticky='ew', columnspan=3)
         self.temperature_label = tk.Label(self.param_frame, text=self.tr('temperature'))
-        self.temperature_label.grid(row=5, column=4, sticky='e')
+        self.temperature_label.grid(row=3, column=4, sticky='e')
         self.widgets_to_translate['temperature_label'] = self.temperature_label
-        tk.Entry(self.param_frame, textvariable=self.temperature, width=8).grid(row=5, column=5, sticky='w')
+        tk.Entry(self.param_frame, textvariable=self.temperature, width=8).grid(row=3, column=5, sticky='w')
 
         self.output_file_label = tk.Label(self.param_frame, text=self.tr('output_file'))
-        self.output_file_label.grid(row=6, column=0, sticky='e')
+        self.output_file_label.grid(row=4, column=0, sticky='e')
         self.widgets_to_translate['output_file_label'] = self.output_file_label
-        tk.Entry(self.param_frame, textvariable=self.output_basename).grid(row=6, column=1, sticky='ew', columnspan=4)
+        tk.Entry(self.param_frame, textvariable=self.output_basename).grid(row=4, column=1, sticky='ew', columnspan=4)
         self.save_btn = tk.Button(self.param_frame, text=self.tr('save'), command=self.save_plot_dialog)
-        self.save_btn.grid(row=6, column=5, sticky='w')
+        self.save_btn.grid(row=4, column=5, sticky='w')
         self.widgets_to_translate['save_btn'] = self.save_btn
 
-        #===================================================================================
-        self.print_frame = tk.LabelFrame(self.root, text=self.tr('print_options'), padx=8, pady=4)
-        self.print_frame.grid(row=1, column=0, sticky='ew', padx=8, pady=0, columnspan=5)
-        self.widgets_to_translate['print_frame'] = self.print_frame
-        #
         # Paramètres de tracé (axes)
-        self.xmin_label = tk.Label(self.print_frame, text=self.tr('xmin'))
-        self.xmin_label.grid(row=1, column=0, sticky='e')
+        self.xmin_label = tk.Label(self.param_frame, text=self.tr('xmin'))
+        self.xmin_label.grid(row=5, column=0, sticky='e')
         self.widgets_to_translate['xmin_label'] = self.xmin_label
-        tk.Entry(self.print_frame, textvariable=self.xmin, width=8).grid(row=1, column=1, sticky='w')
-        self.xmax_label = tk.Label(self.print_frame, text=self.tr('xmax'))
-        self.xmax_label.grid(row=1, column=2, sticky='e')
+        tk.Entry(self.param_frame, textvariable=self.xmin, width=8).grid(row=5, column=1, sticky='w')
+        self.xmax_label = tk.Label(self.param_frame, text=self.tr('xmax'))
+        self.xmax_label.grid(row=5, column=2, sticky='e')
         self.widgets_to_translate['xmax_label'] = self.xmax_label
-        tk.Entry(self.print_frame, textvariable=self.xmax, width=8).grid(row=1, column=3, sticky='w')
-        self.ymin_label = tk.Label(self.print_frame, text=self.tr('ymin'))
-        self.ymin_label.grid(row=2, column=0, sticky='e')
+        tk.Entry(self.param_frame, textvariable=self.xmax, width=8).grid(row=5, column=3, sticky='w')
+        self.ymin_label = tk.Label(self.param_frame, text=self.tr('ymin'))
+        self.ymin_label.grid(row=5, column=4, sticky='e')
         self.widgets_to_translate['ymin_label'] = self.ymin_label
-        tk.Entry(self.print_frame, textvariable=self.ymin, width=8).grid(row=2, column=1, sticky='w')
-        self.ymax_label = tk.Label(self.print_frame, text=self.tr('ymax'))
-        self.ymax_label.grid(row=2, column=2, sticky='e')
+        tk.Entry(self.param_frame, textvariable=self.ymin, width=8).grid(row=5, column=5, sticky='w')
+        self.ymax_label = tk.Label(self.param_frame, text=self.tr('ymax'))
+        self.ymax_label.grid(row=5, column=6, sticky='e')
         self.widgets_to_translate['ymax_label'] = self.ymax_label
-        tk.Entry(self.print_frame, textvariable=self.ymax, width=8).grid(row=2, column=3, sticky='w')
+        tk.Entry(self.param_frame, textvariable=self.ymax, width=8).grid(row=5, column=7, sticky='w')
 
-        self.xscale_label = tk.Label(self.print_frame, text=self.tr('xscale'))
-        self.xscale_label.grid(row=3, column=0, sticky='e')
+        self.xscale_label = tk.Label(self.param_frame, text=self.tr('xscale'))
+        self.xscale_label.grid(row=5, column=8, sticky='e')
         self.widgets_to_translate['xscale_label'] = self.xscale_label
-        self.xscale_menu = tk.OptionMenu(self.print_frame, self.xscale, "linear", "log")
-        self.xscale_menu.grid(row=3, column=1, sticky='w')
+        self.xscale_menu = tk.OptionMenu(self.param_frame, self.xscale, "linear", "log")
+        self.xscale_menu.grid(row=5, column=9, sticky='w')
         self.widgets_to_translate['xscale_menu'] = self.xscale_menu
-        self.yscale_label = tk.Label(self.print_frame, text=self.tr('yscale'))
-        self.yscale_label.grid(row=3, column=2, sticky='e')
+        self.yscale_label = tk.Label(self.param_frame, text=self.tr('yscale'))
+        self.yscale_label.grid(row=5, column=10, sticky='e')
         self.widgets_to_translate['yscale_label'] = self.yscale_label
-        self.yscale_menu = tk.OptionMenu(self.print_frame, self.yscale, "linear", "log")
-        self.yscale_menu.grid(row=3, column=3, sticky='w')
+        self.yscale_menu = tk.OptionMenu(self.param_frame, self.yscale, "linear", "log")
+        self.yscale_menu.grid(row=5, column=11, sticky='w')
         self.widgets_to_translate['yscale_menu'] = self.yscale_menu
 
-        # ----------  Sélection dynamique de l'abscisse ----------
-        self.xaxis_label = tk.Label(self.print_frame, text=self.tr('xscale_label'))  # sera traduit dans refresh_labels
-        self.xaxis_label.grid(row=4, column=0, sticky="e")
-        self.xaxis_menu = tk.OptionMenu(self.print_frame, self.xaxis_choice, "")  # init vide
-        self.xaxis_menu.grid(row=4, column=1, sticky="ew", columnspan=2)
-        self.update_xaxis_menu()
-        #
-        # ylabels
-        self.yaxis_label = tk.Label(self.print_frame, text=self.tr('yscale_label'))  # sera traduit dans refresh_labels
-        self.yaxis_label.grid(row=4, column=2, sticky="e")
-        self.yaxis_menu = tk.OptionMenu(self.print_frame, self.yaxis_choice, "")  # init vide
-        self.yaxis_menu.grid(row=4, column=3, sticky="ew", columnspan=2)
-        self.update_yaxis_menu()
-        # ---------------------------------------------------------------
+        # ---------- Sélecteurs dynamiques pour abscisse et ordonnée ----------
+        self.xaxis_label = tk.Label(self.param_frame, text="Abscisse")
+        self.xaxis_label.grid(row=6, column=0, sticky="e")
+        self.xaxis_choice = ttk.Combobox(self.param_frame, state='readonly', width=20)
+        self.xaxis_choice.grid(row=6, column=1, sticky="ew", columnspan=3)
+        self.yaxis_label = tk.Label(self.param_frame, text="Ordonnée")
+        self.yaxis_label.grid(row=6, column=4, sticky="e")
+        self.yaxis_choice = ttk.Combobox(self.param_frame, state='readonly', width=20)
+        self.yaxis_choice.grid(row=6, column=5, sticky="ew", columnspan=3)
+        # --------------------------------------------------------------------
 
-        #=================================================================
-        # Options d'affichage avancées
+        # Options d'affichage avancées (inchangé)
         self.options_frame = tk.LabelFrame(self.root, text=self.tr('defects_objects'), padx=8, pady=4)
-        self.options_frame.grid(row=2, column=0, sticky='ew', padx=8, pady=0, columnspan=14)
+        self.options_frame.grid(row=1, column=0, sticky='ew', padx=8, pady=0, columnspan=14)
         self.widgets_to_translate['options_frame'] = self.options_frame
 
         self.vacancies_cb = tk.Checkbutton(self.options_frame, text=self.tr('vacancies'), variable=self.show_vacancies)
@@ -249,10 +231,9 @@ class DefectPlotterApp:
         self.show_added_atoms_cb.grid(row=0, column=4, sticky='w')
         self.widgets_to_translate['show_added_atoms_cb'] = self.show_added_atoms_cb
 
-        #=================================================================
         # Sélection atomes/sites à tracer (Listbox multisélection)
         atoms_sites_sel_frame = tk.LabelFrame(self.root, text=self.tr('apply_selection'))
-        atoms_sites_sel_frame.grid(row=1, column=1, sticky='ne', padx=8, pady=2, rowspan=1)
+        atoms_sites_sel_frame.grid(row=1, column=99, sticky='ne', padx=8, pady=2, rowspan=1)
         # Liste des atomes
         self.atom_listbox_label = tk.Label(atoms_sites_sel_frame, text=self.tr('select_atoms'))
         self.atom_listbox_label.pack(anchor='w')
@@ -270,9 +251,8 @@ class DefectPlotterApp:
         self.apply_selection_btn.pack(pady=4)
         self.widgets_to_translate['apply_selection_btn'] = self.apply_selection_btn
 
-        #=================================================================
         action_frame = tk.Frame(self.root)
-        action_frame.grid(row=3, column=0, columnspan=14, pady=5)
+        action_frame.grid(row=2, column=0, columnspan=14, pady=5)
         self.generate_btn = tk.Button(action_frame, text=self.tr('generate_plot'), command=self.generate_plot)
         self.generate_btn.pack(side='left', padx=10)
         self.widgets_to_translate['generate_btn'] = self.generate_btn
@@ -291,65 +271,22 @@ class DefectPlotterApp:
         self.param_frame.grid_columnconfigure(1, weight=1)
         self.param_frame.grid_columnconfigure(4, weight=1)
 
-        # Initialisation des listes d'atomes/sites et du menu abscisse
+        # Initialisation des listes d'atomes/sites
         self.update_site_atom_inputs()
 
     def update_site_atom_inputs(self):
         # Appelle la logique pour mettre à jour les widgets dynamiquement
         self.logic.update_site_atom_inputs()
         self.update_atom_site_listboxes()
-        self.update_xaxis_menu()  # MAJ la sélection abscisse à chaque update
 
         # ----------- AJOUT : bind dynamique sur tous les Entry de noms d'espèces ----------- #
         for entry in self.network_atom_entries:
-            entry.bind("<KeyRelease>", lambda event: self.update_xaxis_menu())
+            entry.bind("<KeyRelease>", lambda event: self.update_atom_site_listboxes())
         for entry in self.added_atom_entries:
-            entry.bind("<KeyRelease>", lambda event: self.update_xaxis_menu())
+            entry.bind("<KeyRelease>", lambda event: self.update_atom_site_listboxes())
         for entry in self.inter_site_entries:
-            entry.bind("<KeyRelease>", lambda event: self.update_xaxis_menu())
+            entry.bind("<KeyRelease>", lambda event: self.update_atom_site_listboxes())
         # ----------------------------------------------------------------------------------- #
-
-    def update_xaxis_menu(self):
-        # Récupère la liste des atomes (réseau + ajoutés)
-        atom_names = []
-        for e in self.network_atom_entries:
-            v = e.get().strip()
-            if v: atom_names.append(v)
-        for e in self.added_atom_entries:
-            v = e.get().strip()
-            if v: atom_names.append(v)
-        # Propose choix : x_<nom> et mu_<nom>
-        choices = [f"x_{v}" for v in atom_names] + [f"mu_{v}" for v in atom_names]
-        if not choices:
-            choices = ["x_at1", "mu_at1"]
-        old_choice = self.xaxis_choice.get()
-        if old_choice not in choices:
-            self.xaxis_choice.set(choices[0])
-        # Détruit l'ancien menu si besoin
-        if self.xaxis_menu is not None:
-            self.xaxis_menu.destroy()
-        # Crée le nouveau menu
-        self.xaxis_menu = tk.OptionMenu(self.print_frame, self.xaxis_choice, *choices)
-        self.xaxis_menu.grid(row=4, column=1, sticky="ew", columnspan=1)
-        # Label associé
-        if self.xaxis_label is not None:
-            self.xaxis_label.config(text=self.tr('xaxis_label') if 'xaxis_label' in translations[self.language] else "Abscisse")
-
-    def update_yaxis_menu(self):
-        # 
-        choices = ["x", "$H_f$"]
-        old_choice = self.yaxis_choice.get()
-        if old_choice not in choices:
-            self.yaxis_choice.set(choices[0])
-        # Détruit l'ancien menu si besoin
-        if self.yaxis_menu is not None:
-            self.yaxis_menu.destroy()
-        # Crée le nouveau menu
-        self.yaxis_menu = tk.OptionMenu(self.print_frame, self.yaxis_choice, *choices)
-        self.yaxis_menu.grid(row=4, column=3, sticky="ew", columnspan=1)
-        # Label associé
-        if self.yaxis_label is not None:
-            self.yaxis_label.config(text=self.tr('yaxis_label') if 'yaxis_label' in translations[self.language] else "Ordonnée")
 
     def update_atom_site_listboxes(self):
         self.atom_listbox.delete(0, tk.END)
@@ -377,8 +314,6 @@ class DefectPlotterApp:
     def change_language(self, lang):
         self.language = lang
         self.refresh_labels()
-        self.update_xaxis_menu()
-        self.update_yaxis_menu()
 
     def refresh_labels(self):
         self.param_frame.config(text=self.tr('system_params'))
@@ -415,3 +350,5 @@ class DefectPlotterApp:
         self.apply_selection_btn.config(text=self.tr('apply_selection'))
         if self.xaxis_label is not None:
             self.xaxis_label.config(text=self.tr('xaxis_label') if 'xaxis_label' in translations[self.language] else "Abscisse")
+        if self.yaxis_label is not None:
+            self.yaxis_label.config(text=self.tr('yaxis_label') if 'yaxis_label' in translations[self.language] else "Ordonnée")
