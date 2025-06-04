@@ -11,6 +11,9 @@ Affichage et sauvegarde du graphique matplotlib.
 import matplotlib.pyplot as plt
 from data_loader import read_data, check_files_exist, get_n_species, get_colnames
 import config
+import os
+
+debug=False
 
 class Plotter:
     def __init__(self, app):
@@ -116,16 +119,25 @@ class Plotter:
         missing_files = []
 
         for fname, label in file_labels:
-            abs_fname = fname
+            if debug:
+                print(f"[DEBUG] Cherche fichier: {fname}")
+                print(f"[DEBUG] Présent ? {os.path.exists(fname)}")
+                try:
+                    with open(fname, 'r', encoding='latin1') as f:
+                        lines = f.readlines()
+                    print(f"[DEBUG] {fname} : {len(lines)} lignes")
+                    print(f"[DEBUG] Premières lignes : {lines[:6]}")
+                except Exception as e:
+                    print(f"[DEBUG] Erreur lecture {fname} : {e}")
             self.app.preview_text.insert('end', f"{fname}\n")
-            x, y = read_data(abs_fname, x_col=x_col, y_col=y_col)
+            x, y = read_data(fname, x_col=x_col, y_col=y_col)
             color = next(colors)
             style = next(styles)
             if x is not None and y is not None and len(x) > 0 and len(y) > 0:
                 found_data = True
                 plt.plot(x, y, label=label, color=color, linestyle=style, linewidth=2)
             else:
-                missing_files.append(abs_fname)
+                missing_files.append(fname)
 
         self.app.preview_text.config(state='disabled')
 
@@ -142,6 +154,10 @@ class Plotter:
             plt.close()
             return
 
+        if debug: #dd
+            print("[DEBUG] file_labels =", file_labels)
+            for fname, label in file_labels:
+                print(f"[DEBUG] Fichier {fname} avec label {label}")
         plt.legend(loc='center left', bbox_to_anchor=(1.02, 0.5), fontsize=12, frameon=True)
         plt.tight_layout()
         plt.show()
@@ -162,6 +178,10 @@ class Plotter:
 
     def _save_plot(self, savepath):
         logic = self.app.logic
+        if debug: #dd
+            print(f"[DEBUG] base={base}, show_vac={show_vac}, show_sub={show_sub}")
+            print(f"[DEBUG] network_atoms={network_atoms}, added_atoms={added_atoms}, network_sites={network_sites}, inter_sites={inter_sites}")
+            print(f"[DEBUG] selected_atoms={selected_atoms}, selected_sites={selected_sites}")
         file_labels = logic.generate_file_list_and_labels()
         colors = iter(config.COLORS * 20)
         styles = iter(config.STYLES * 50)

@@ -10,6 +10,8 @@ import numpy as np
 import os
 from io import StringIO
 
+debug=True
+
 def get_n_species(filepath):
     """
     Détecte automatiquement le nombre d'espèces (atomes réseau + interstitiels) dans le fichier.
@@ -87,6 +89,11 @@ def read_data(filepath, x_col=None, y_col=None, n_species=None):
             report(f"Aucune donnée exploitable dans le fichier: {filepath}")  # MODIF gestion d’erreur
             return None, None
         data_str = "".join(lines[start_index:])
+        
+        if debug:
+              print(f"[DEBUG] Première ligne de données pour {filepath}: {lines[start_index]}")
+              print(f"[DEBUG] Data déduite (après header):\n{data_str[:150]}")  # Affiche les 200 premiers caractères
+
         data = np.loadtxt(StringIO(data_str))
         if data.ndim == 1:
             data = np.expand_dims(data, axis=0)
@@ -94,14 +101,16 @@ def read_data(filepath, x_col=None, y_col=None, n_species=None):
         n = n_species or ((ncol - 2) // 2)
         # Par défaut : X = dernière x_at (H si présent), Y = concentration de config (x_DP)
         if x_col is None:
-            x_col = n + n - 1  # dernière colonne x_at
+            x_col = 2 * n - 1  # dernière colonne x_at
         if y_col is None:
             y_col = 2 * n      # x_DP (concentration de config)
         if x_col >= ncol or y_col >= ncol:
             report(f"Index colonne (x_col={x_col}, y_col={y_col}) hors limites [0, {ncol-1}] dans {filepath}")  # MODIF gestion d’erreur
             return [], []
-        x = data[:, x_col]
-        y = data[:, y_col]
+        x, y = data[:, x_col], data[:, y_col]
+        if debug:
+            print(f"[DEBUG] x ({filepath}) : {x[:5]}")
+            print(f"[DEBUG] y ({filepath}) : {y[:5]}")
         return x, y
     except Exception as e:
         report(f"Erreur lors de la lecture de {filepath} : {str(e)}")  # MODIF gestion d’erreur
