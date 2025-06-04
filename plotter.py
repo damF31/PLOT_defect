@@ -1,5 +1,7 @@
 """
 Affichage et sauvegarde du graphique matplotlib.
+
+Responsabilités principales :
 - Récupère la liste des fichiers, labels et données depuis defect_logic et data_loader.
 - Affiche la figure, la met en forme, affiche la légende et gère la sauvegarde.
 - Gère la traduction dynamique pour les messages d'erreur/infos.
@@ -13,20 +15,29 @@ from data_loader import read_data, check_files_exist, get_n_species, get_colname
 import config
 import os
 
-debug=False
-
 class Plotter:
     def __init__(self, app):
+        """
+        Initialise le plotter avec une référence à l'application principale (app).
+        """
         self.app = app
+        self.debug = False  # Mettre à True pour activer les prints de debug
 
     def get_plot_limits_and_scales(self, xaxis_type='x'):
-        # Récupère et vérifie les bornes/échelles depuis l'UI
+        """
+        Récupère et vérifie les bornes et échelles des axes depuis l'UI utilisateur.
+
+        xaxis_type : str
+            'x' pour tracer en fonction de x_*, 'mu' pour mu_*
+        Retour :
+            xmin, xmax, ymin, ymax, xscale, yscale : valeurs prêtes à passer à matplotlib
+        """
         def safe_float(val, default):
             try:
                 return float(val)
             except Exception:
                 return default
-        # X/Y min/max
+        # Gestion des bornes X selon le type d’axe
         if xaxis_type == 'mu':
             xmin = safe_float(self.app.xmin.get(), -11)
             xmax = safe_float(self.app.xmax.get(), 0)
@@ -42,51 +53,39 @@ class Plotter:
 
     def get_xcol_ycol(self, fname):
         """
-        Retourne les indices des colonnes sélectionnées via l'UI, dans l'ordre réel du fichier.
-        """
-        # Récupère tous les noms de colonnes dans l'ordre réel
-        colnames = get_colnames_full(fname)
-        # Récupère le choix utilisateur dans l'interface (menu déroulant ou champ texte)
-        absc_label = self.app.xaxis_choice.get()  # ex: "mu2" ou "x_at1" ou "x_DP"
-        y_label = self.app.yaxis_choice.get()     # ex: "x_DP" ou "Hf_DP"
-        # Trouve l'indice correspondant dans colnames
-        x_col = colnames.index(absc_label)
-        y_col = colnames.index(y_label)
-        return x_col, y_col, 'x', colnames
+        Retourne les indices de colonnes sélectionnées via l'interface utilisateur.
 
-#    def get_xcol_ycol(self, fname):
-#        """
-#        Calcule les bons index de colonnes pour l'abscisse et l'ordonnée selon le choix utilisateur.
-#        """
-#        n = get_n_species(fname)
-#        # Liste des noms d'espèces dans l'ordre fichier
-#        all_names = get_colnames(fname)
-#        # Nom de l'abscisse choisi
-#        xaxis_name = self.app.xaxis_choice.get()  # ex: "x_H", "mu_Ti"
-#        # Par défaut (sécurité)
-#        x_col = n + n - 1  # dernière x_at
-#        xaxis_type = 'x'
-#        if xaxis_name and '_' in xaxis_name:
-#            kind, label = xaxis_name.split("_", 1)
-#            if label in all_names:
-#                idx = all_names.index(label)
-#            else:
-#                idx = 0
-#            if kind == "x":
-#                x_col = n + idx
-#                xaxis_type = 'x'
-#            elif kind == "mu":
-#                x_col = idx
-#                xaxis_type = 'mu'
-#        # y_col = concentration de config (x_DP), c'est toujours colonne 2n
-#        y_col = 2 * n
-#        return x_col, y_col, xaxis_type, all_names
+        fname : str
+            Chemin du fichier de données (utilisé ici pour retrouver la liste des colonnes)
+        Retour :
+            x_col, y_col : indices numériques des colonnes à tracer
+            x_label : label de l'abscisse
+            all_colnames : liste de tous les labels possibles (dans l'ordre du fichier)
+        Exception :
+            ValueError si les labels sélectionnés ne correspondent à aucune colonne connue
+        """
+        x_label = self.app.xaxis_choice_var.get()
+        y_label = self.app.yaxis_choice_var.get()
+        all_colnames = self.app.all_colnames  # Liste des noms de colonnes (UI)
+        if x_label not in all_colnames or y_label not in all_colnames:
+            raise ValueError(f"Colonne inconnue: {x_label} ou {y_label}. Vérifiez les atomes définis.")
+        x_col = all_colnames.index(x_label)
+        y_col = all_colnames.index(y_label)
+        return x_col, y_col, x_label, all_colnames
 
     def generate_plot(self):
+        """
+        Gère l'affichage interactif du graphique :
+        - Récupère la liste de fichiers/labels à tracer
+        - Récupère le choix utilisateur pour les axes
+        - Lit les données (x, y) à tracer pour chaque courbe
+        - Met en forme la figure, affiche la légende, gère les erreurs et l'aperçu
+        """
         logic = self.app.logic
         file_labels = logic.generate_file_list_and_labels()
         premier_fichier = file_labels[0][0] if file_labels else None
         if premier_fichier:
+            # Met à jour dynamiquement la liste des axes si besoin
             self.app.update_axis_choices(premier_fichier)
 
         colors = iter(config.COLORS * 20)
@@ -95,10 +94,9 @@ class Plotter:
         plt.figure(figsize=(13, 8))
         plt.grid(color="#C0C0C0")
 
-        # On détermine la nature de l'abscisse pour le scaling
-        # Prend le premier fichier comme référence
+        # Détermine la nature de l'abscisse pour le scaling
         ref_fname = file_labels[0][0] if file_labels else None
-        x_col, y_col, xaxis_type, all_names = self.get_xcol_ycol(ref_fname) #if ref_fname else (0, 0, 'x', [])
+        x_col, y_col, xaxis_type, all_names = self.get_xcol_ycol(ref_fname)
 
         xmin, xmax, ymin, ymax, xscale, yscale = self.get_plot_limits_and_scales(xaxis_type)
         plt.xscale(xscale)
@@ -107,7 +105,6 @@ class Plotter:
         plt.ylim(ymin, ymax)
 
         # Labels axes
-        # Nom de l'atome pour l'abscisse
         absc_label = self.app.xaxis_choice.get()
         if absc_label.startswith("x_"):
             at_name = absc_label[2:]
@@ -121,7 +118,7 @@ class Plotter:
         plt.ylabel(self.app.tr('ylabel_defects'), fontsize=15, fontweight='bold')
         plt.tick_params(axis='both', which='both', direction='in', top=True, right=True)
 
-        # Titre auto
+        # Titre automatique
         base_title = self.app.title_text.get().strip() or config.DEFAULT_TITLE
         temperature = self.app.temperature.get().strip()
         added_atoms = [e.get().strip() for e in self.app.added_atom_entries if e.get().strip()]
@@ -131,13 +128,15 @@ class Plotter:
         full_title = f"{base_title}{added_atoms_str} à {temperature}K" if self.app.language == "fr" else f"{base_title}{added_atoms_str} at {temperature}K"
         plt.text(0.03, 0.2, full_title, fontsize=14, fontweight='bold', ha='center')
 
+        # Aperçu des fichiers lus dans la fenêtre application
         self.app.preview_text.config(state='normal')
         self.app.preview_text.delete(1.0, 'end')
         found_data = False
         missing_files = []
 
+        print("[DEBUG] file_labels dans plotter =", file_labels)
         for fname, label in file_labels:
-            if debug:
+            if self.debug:
                 print(f"[DEBUG] Cherche fichier: {fname}")
                 print(f"[DEBUG] Présent ? {os.path.exists(fname)}")
                 try:
@@ -159,6 +158,7 @@ class Plotter:
 
         self.app.preview_text.config(state='disabled')
 
+        # Gestion des fichiers manquants
         if missing_files:
             import tkinter.messagebox as mb
             msg = self.app.tr('missing_files') + "\n" + "\n".join(missing_files)
@@ -166,13 +166,14 @@ class Plotter:
             plt.close()
             return
 
+        # Gestion du cas où aucune donnée n'a pu être tracée
         if not found_data:
             import tkinter.messagebox as mb
             mb.showwarning(self.app.tr('no_file_title'), self.app.tr('no_file'))
             plt.close()
             return
 
-        if debug: #dd
+        if self.debug: 
             print("[DEBUG] file_labels =", file_labels)
             for fname, label in file_labels:
                 print(f"[DEBUG] Fichier {fname} avec label {label}")
@@ -181,6 +182,10 @@ class Plotter:
         plt.show()
 
     def save_plot_dialog(self):
+        """
+        Boîte de dialogue pour sauvegarder le plot affiché (PNG, JPG, PDF).
+        Affiche un message de confirmation ou d’erreur selon le succès.
+        """
         from tkinter import filedialog, messagebox
         fmt = filedialog.asksaveasfilename(defaultextension=".png",
                                            filetypes=[("PNG", "*.png"), ("JPG", "*.jpg"), ("PDF", "*.pdf")],
@@ -195,11 +200,11 @@ class Plotter:
                 messagebox.showerror(self.app.tr('error_title'), self.app.tr('unsupported_format'))
 
     def _save_plot(self, savepath):
+        """
+        Génère le plot et le sauvegarde à l'emplacement désigné.
+        (quasiment identique à generate_plot mais sans interaction UI)
+        """
         logic = self.app.logic
-        if debug: #dd
-            print(f"[DEBUG] base={base}, show_vac={show_vac}, show_sub={show_sub}")
-            print(f"[DEBUG] network_atoms={network_atoms}, added_atoms={added_atoms}, network_sites={network_sites}, inter_sites={inter_sites}")
-            print(f"[DEBUG] selected_atoms={selected_atoms}, selected_sites={selected_sites}")
         file_labels = logic.generate_file_list_and_labels()
         colors = iter(config.COLORS * 20)
         styles = iter(config.STYLES * 50)
@@ -207,7 +212,6 @@ class Plotter:
         plt.figure(figsize=(13, 8))
         plt.grid(color="#C0C0C0")
 
-        # On détermine la nature de l'abscisse pour le scaling
         ref_fname = file_labels[0][0] if file_labels else None
         x_col, y_col, xaxis_type, all_names = self.get_xcol_ycol(ref_fname) if ref_fname else (0, 0, 'x', [])
 
@@ -217,7 +221,6 @@ class Plotter:
         plt.xlim(xmin, xmax)
         plt.ylim(ymin, ymax)
 
-        # Labels axes
         absc_label = self.app.xaxis_choice.get()
         if absc_label.startswith("x_"):
             at_name = absc_label[2:]
@@ -242,15 +245,12 @@ class Plotter:
 
         found_data = False
         for fname, label in file_labels:
-            self.app.preview_text.insert('end', f"{fname}\n")
             x, y = read_data(fname, x_col=x_col, y_col=y_col)
             color = next(colors)
             style = next(styles)
             if x is not None and y is not None and len(x) > 0 and len(y) > 0:
                 found_data = True
                 plt.plot(x, y, label=label, color=color, linestyle=style, linewidth=2)
-            else:
-                missing_files.append(abs_fname)
         if not found_data:
             plt.close()
             return

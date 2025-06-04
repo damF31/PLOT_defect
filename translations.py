@@ -1,3 +1,16 @@
+"""
+Dictionnaire de traductions pour l’interface utilisateur (français / anglais).
+
+Permet la localisation dynamique de tous les textes affichés dans l’interface,
+y compris les boutons, labels, messages d’erreur, options de tracé, etc.
+
+Utilisation typique :
+    lang = "fr" ou "en"
+    translations[lang]['system_params']  # => texte localisé
+
+Astuce : pour ajouter une langue, ajouter une nouvelle clé de dictionnaire à la racine.
+"""
+
 translations = {
     'fr': {
         'system_params': "Paramètres système",
